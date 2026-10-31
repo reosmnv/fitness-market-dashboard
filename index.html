@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Конкуренты и рынок: дашборд маркетолога фитнес-сети</title>
+  <link rel="stylesheet" href="assets/styles.css">
+</head>
+<body>
+  <a class="skip" href="#main">К содержанию</a>
+
+  <header class="top">
+    <div class="top__title">
+      <h1>Конкуренты и рынок</h1>
+      <p class="top__sub" id="topSub">Москва · Санкт-Петербург · Сочи</p>
+    </div>
+    <div class="top__actions">
+      <button class="btn btn--ghost" id="themeBtn" type="button" aria-label="Сменить тему">Тема: система</button>
+    </div>
+  </header>
+
+  <div class="banner" role="note">
+    <span class="banner__icon" aria-hidden="true">!</span>
+    <p><b>Макет на демо-данных.</b> Метка <span class="badge badge--demo">ДЕМО</span> значит, что запись вымышлена и показывает формат. Метка <span class="badge badge--fact">ФАКТ</span> значит, что запись взята из ресерча 31.10.2026; источник появляется при наведении. «Наша сеть» и её клубы вымышлены.</p>
+  </div>
+
+  <nav class="tabs" aria-label="Разделы дашборда">
+    <ul id="tabs"></ul>
+  </nav>
+
+  <section class="filters" aria-label="Фильтры">
+    <label>Город
+      <select id="fCity"></select>
+    </label>
+    <label>Сегмент конкурентов
+      <select id="fSegment"></select>
+    </label>
+    <label>Наш клуб
+      <select id="fClub"></select>
+    </label>
+    <label>Неделя событий
+      <select id="fWeek"></select>
+    </label>
+    <button class="btn btn--ghost" id="fReset" type="button">Сбросить</button>
+    <p class="filters__hint" id="filterHint"></p>
+  </section>
+
+  <main id="main" tabindex="-1"></main>
+
+  <footer class="foot">
+    <p>Спецификация: spec.md (ресерч 31.10.2026). Данные: <code>data/data.json</code>. Как устроено и как обновлять: README в репозитории.</p>
+  </footer>
+
+  <div class="tip" id="tip" role="tooltip" hidden></div>
+  <script src="assets/app.js"></script>
+</body>
+</html>
