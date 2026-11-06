@@ -21,9 +21,9 @@
     threats: ['Берём списки клубов с сайтов 8 сетей и посты их Telegram-каналов. Событием считаем анонс, предпродажу, открытие за последние 60 дней и закрытие. Для каждого события ищем наш ближайший клуб по пешему маршруту.',
       'Новый клуб конкурента рядом забирает прежде всего новых клиентов и тех, у кого заканчивается карта. Предпродажа идёт до открытия, это время на ответ.',
       'Сводка считает наши клубы, у которых событие ближе 15 минут пешком. Их стоит разобрать первыми.'],
-    ladder: ['Строка это наш клуб, точка это клуб конкурента, для которого наш клуб ближайший. По горизонтали пешие минуты по улицам (OpenStreetMap, сервис Valhalla, около 5 км/ч). Показаны события до 60 минут.',
+    ladder: ['Строка это наш клуб World Class (значок WC стоит на нуле), точки на линии это клубы конкурентов, для которых этот наш клуб ближайший. По горизонтали пешие минуты по улицам (OpenStreetMap, сервис Valhalla, около 5 км/ч). Показаны события до 60 минут.',
       'Сразу видно, какие наши клубы окружены и насколько плотно.',
-      'Светлая полоса 0–15 минут: та же аудитория. 15–30: частичное пересечение. Наведите на точку или выберите её клавишей Tab, чтобы увидеть клуб, дату и расстояние.'],
+      'Чем короче линия от WC до точки, тем ближе конкурент. Красноватая зона до 15 минут: та же аудитория, разбирать в первую очередь. Серая 15–30: частичное пересечение. Наведите на точку или выберите её клавишей Tab, чтобы увидеть клуб, дату и расстояние.'],
     states: ['Анонс: «скоро открытие», стройка или будущая дата открытия на сайте сети (у DDX также клубы, скрытые в интерфейсе, но уже есть в данных). Предпродажа: слово «предпродажа» на странице клуба или пост об этом в канале. Открылся: дата открытия за 60 дней. Закрыт: прямая отметка на сайте.',
       'Этап показывает, сколько времени осталось на ответ.',
       'Цвет всегда продублирован формой и подписью: круг, кольцо, квадрат, перечёркнутый квадрат.'],
@@ -159,45 +159,77 @@
 
   function ladder(byOur, ev) {
     var MAX = 60;
-    var ids = Object.keys(byOur).filter(function (id) { return byOur[id].some(function (e) { return e.c.nearest && e.c.nearest.walkMin != null && e.c.nearest.walkMin <= MAX; }); })
+    var ok = function (e) { return e.c.nearest && e.c.nearest.walkMin != null && e.c.nearest.walkMin <= MAX; };
+    var ids = Object.keys(byOur).filter(function (id) { return byOur[id].some(ok); })
       .sort(function (a, b) { return byOur[a][0].w - byOur[b][0].w; });
     if (!ids.length) return empty('По выбранным фильтрам событий ближе часа пешком нет.');
-    var W = 1000, L = 250, R = 24, T = 26, RH = 30, H = T + ids.length * RH + 14;
-    var x = function (m) { return L + (W - L - R) * Math.min(m, MAX) / MAX; };
-    var s = '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Наши клубы и пешие минуты до событий конкурентов. Подробности в списке ниже.">';
-    s += '<rect class="zone" x="' + x(0) + '" y="' + (T - 6) + '" width="' + (x(15) - x(0)) + '" height="' + (H - T - 10) + '"/>';
-    s += '<text class="zone-label" x="' + (x(0) + 6) + '" y="' + (T - 10) + '">та же аудитория, до 15 мин</text>';
-    s += '<g class="axis">';
-    [0, 15, 30, 45, 60].forEach(function (m) {
-      s += '<line class="grid" x1="' + x(m) + '" x2="' + x(m) + '" y1="' + (T - 6) + '" y2="' + (H - 16) + '"/>';
-      s += '<text x="' + x(m) + '" y="' + (H - 2) + '" text-anchor="middle">' + (m === 60 ? '60 мин' : m) + '</text>';
+    var W = 1000, L = 230, P0 = L + 34, R = 16, T = 50, CW = 6.4;
+    var x = function (m) { return P0 + (W - P0 - R) * Math.min(m, MAX) / MAX; };
+    // раскладка подписей по двум дорожкам: над линией и под ней
+    var rows = ids.map(function (id) {
+      var list = byOur[id].filter(ok).slice().sort(function (a, b) { return a.c.nearest.walkMin - b.c.nearest.walkMin; });
+      var lanes = [-1e9, -1e9], labels = [];
+      list.forEach(function (e) {
+        var text = clubLabel(e.c), cx = x(e.c.nearest.walkMin);
+        var w = (String(e.c.nearest.walkMin).length + 5 + text.length) * CW;
+        var right = cx + 12 + w > W - 4, x0 = right ? cx - 12 - w : cx + 12, x1 = right ? cx - 12 : cx + 12 + w;
+        var lane = x0 > lanes[0] + 8 ? 0 : (x0 > lanes[1] + 8 ? 1 : -1);
+        if (lane >= 0) lanes[lane] = x1;
+        labels.push({ e: e, cx: cx, text: text, right: right, lane: lane });
+      });
+      var two = labels.some(function (l) { return l.lane === 1; });
+      return { id: id, labels: labels, h: two ? 58 : 44 };
     });
-    s += '</g>';
+    var H = T + rows.reduce(function (s, r) { return s + r.h; }, 0) + 34;
+    var s = '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Наши клубы World Class и пешие минуты до клубов конкурентов. Подробности в списке ниже.">';
+    // зоны и шапка
+    s += '<rect class="zone" x="' + x(0) + '" y="' + (T - 10) + '" width="' + (x(15) - x(0)) + '" height="' + (H - T - 24) + '"/>';
+    s += '<rect class="zone2" x="' + x(15) + '" y="' + (T - 10) + '" width="' + (x(30) - x(15)) + '" height="' + (H - T - 24) + '"/>';
+    s += '<text class="band-label" x="' + (x(0) + 6) + '" y="14">до 15 мин: та же аудитория</text>';
+    s += '<text class="band-label" x="' + (x(15) + 6) + '" y="14">15–30: пересечение</text>';
+    s += '<text class="band-label" x="' + (x(30) + 6) + '" y="14">30–60: соседний район</text>';
+    [0, 15, 30, 45, 60].forEach(function (m) {
+      s += '<line class="grid" x1="' + x(m) + '" x2="' + x(m) + '" y1="' + (T - 10) + '" y2="' + (H - 34) + '"/>';
+      s += '<text class="tick" x="' + x(m) + '" y="' + (T - 16) + '" text-anchor="middle">' + m + '</text>';
+      s += '<text class="tick" x="' + x(m) + '" y="' + (H - 20) + '" text-anchor="middle">' + m + '</text>';
+    });
+    s += '<text class="axis-title" x="' + (W - R) + '" y="' + (H - 4) + '" text-anchor="end">минут пешком от нашего клуба →</text>';
     var shape = function (k, cx, cy) {
       var col = 'var(--s-' + k + ')';
-      if (k === 'presale') return '<circle cx="' + cx + '" cy="' + cy + '" r="6.5" fill="' + col + '" stroke="var(--surface)" stroke-width="2"/>';
-      if (k === 'announced') return '<circle cx="' + cx + '" cy="' + cy + '" r="5.5" fill="var(--surface)" stroke="' + col + '" stroke-width="3"/>';
-      if (k === 'opened') return '<rect x="' + (cx - 6) + '" y="' + (cy - 6) + '" width="12" height="12" rx="2" fill="' + col + '" stroke="var(--surface)" stroke-width="2"/>';
-      return '<rect x="' + (cx - 5.5) + '" y="' + (cy - 5.5) + '" width="11" height="11" rx="2" fill="var(--surface)" stroke="' + col + '" stroke-width="2"/><line x1="' + (cx - 6) + '" y1="' + (cy + 6) + '" x2="' + (cx + 6) + '" y2="' + (cy - 6) + '" stroke="' + col + '" stroke-width="2"/>';
+      if (k === 'presale') return '<circle cx="' + cx + '" cy="' + cy + '" r="7" fill="' + col + '" stroke="var(--surface)" stroke-width="2"/>';
+      if (k === 'announced') return '<circle cx="' + cx + '" cy="' + cy + '" r="6" fill="var(--surface)" stroke="' + col + '" stroke-width="3"/>';
+      if (k === 'opened') return '<rect x="' + (cx - 6.5) + '" y="' + (cy - 6.5) + '" width="13" height="13" rx="2" fill="' + col + '" stroke="var(--surface)" stroke-width="2"/>';
+      return '<rect x="' + (cx - 6) + '" y="' + (cy - 6) + '" width="12" height="12" rx="2" fill="var(--surface)" stroke="' + col + '" stroke-width="2"/><line x1="' + (cx - 6) + '" y1="' + (cy + 6) + '" x2="' + (cx + 6) + '" y2="' + (cy - 6) + '" stroke="' + col + '" stroke-width="2"/>';
     };
-    ids.forEach(function (id, i) {
-      var y = T + i * RH + RH / 2, o = ourById(id);
-      var lab = o.address.length > 34 ? o.address.slice(0, 33) + '…' : o.address;
-      s += '<text class="row-label' + (F.our === id ? ' is-sel' : '') + '" x="' + (L - 12) + '" y="' + (y + 4) + '" text-anchor="end"><title>' + esc(o.address) + '</title>' + esc(lab) + '</text>';
-      s += '<line class="rowline" x1="' + L + '" x2="' + (W - R) + '" y1="' + y + '" y2="' + y + '"/>';
-      var list = byOur[id].filter(function (e) { return e.c.nearest && e.c.nearest.walkMin != null && e.c.nearest.walkMin <= MAX; });
-      list.slice().reverse().forEach(function (e) {
-        var c = e.c, cx = x(c.nearest.walkMin);
-        var tip = esc(KIND[e.k].label + ': ' + c.name + ' (' + chainName(c.chain) + ')') + '|' + esc(c.address || '') + '|' + c.nearest.walkMin + ' мин пешком, ' + km(c.nearest.walkKm != null ? c.nearest.walkKm : c.nearest.km) + ' км' + (c.openDate ? '|Открытие ' + fmtDate(c.openDate) : '');
-        s += '<g class="dot" tabindex="0" role="img" data-tip="' + tip + '" aria-label="' + tip.replace(/\|/g, '. ') + '">' + shape(e.k, cx, y) + '<circle class="hit" cx="' + cx + '" cy="' + y + '" r="11" fill="transparent"/></g>';
+    var y0 = T;
+    rows.forEach(function (row, i) {
+      var o = ourById(row.id), y = y0 + 24;
+      if (i) s += '<line class="rowsep" x1="0" x2="' + W + '" y1="' + y0 + '" y2="' + y0 + '"/>';
+      var lab = o.address.length > 30 ? o.address.slice(0, 29) + '…' : o.address;
+      s += '<text class="row-label' + (F.our === row.id ? ' is-sel' : '') + '" x="' + (L - 4) + '" y="' + (y - 1) + '" text-anchor="end"><title>' + esc(o.address) + '</title>' + esc(lab) + '</text>';
+      s += '<text class="row-sub" x="' + (L - 4) + '" y="' + (y + 13) + '" text-anchor="end">' + esc(regName(o.city)) + '</text>';
+      var far = row.labels[row.labels.length - 1].cx;
+      s += '<line class="ruler" x1="' + x(0) + '" x2="' + far + '" y1="' + y + '" y2="' + y + '"/>';
+      s += '<g aria-hidden="true"><rect class="our-box" x="' + (x(0) - 13) + '" y="' + (y - 9) + '" width="26" height="18" rx="4"/><text class="our-txt" x="' + x(0) + '" y="' + (y + 3.5) + '" text-anchor="middle">WC</text></g>';
+      row.labels.slice().reverse().forEach(function (l) {
+        var c = l.e.c;
+        var tip = esc(KIND[l.e.k].label + ': ' + c.name + ' (' + chainName(c.chain) + ')') + '|' + esc(c.address || '') + '|' + c.nearest.walkMin + ' мин пешком, ' + km(c.nearest.walkKm != null ? c.nearest.walkKm : c.nearest.km) + ' км от нашего клуба ' + esc(o.address) + (c.openDate ? '|Открытие ' + fmtDate(c.openDate) : '');
+        s += '<g class="dot" tabindex="0" role="img" data-tip="' + tip + '" aria-label="' + tip.replace(/\|/g, '. ') + '">' + shape(l.e.k, l.cx, y) + '<circle class="hit" cx="' + l.cx + '" cy="' + y + '" r="12" fill="transparent"/></g>';
       });
-      var first = list[0];
-      if (first) { var fx = x(first.c.nearest.walkMin), right = fx > W - 330; s += '<text class="dlabel" x="' + (right ? fx - 12 : fx + 12) + '" y="' + (y - 7) + '"' + (right ? ' text-anchor="end"' : '') + '>' + first.c.nearest.walkMin + ' мин, ' + esc(clubLabel(first.c)) + '</text>'; }
+      row.labels.forEach(function (l) {
+        if (l.lane < 0) return;
+        var ly = l.lane === 0 ? y - 11 : y + 21;
+        s += '<text class="dlabel" x="' + (l.right ? l.cx - 12 : l.cx + 12) + '" y="' + ly + '"' + (l.right ? ' text-anchor="end"' : '') + '><tspan class="m">' + l.e.c.nearest.walkMin + ' мин</tspan> ' + esc(l.text) + '</text>';
+      });
+      y0 += row.h;
     });
     s += '</svg>';
-    var beyond = ev.filter(function (e) { return !(e.c.nearest && e.c.nearest.walkMin != null && e.c.nearest.walkMin <= MAX); }).length;
-    return '<div class="ladder"><h3 style="font-size:.92rem;margin:0 0 4px">Наши клубы и пешие минуты до событий конкурентов' + info('ladder') + '</h3>' + s + '</div>' +
-      (beyond ? '<p class="note" style="margin-top:6px">Дальше часа пешком или без координат: ' + plural(beyond, 'событие', 'события', 'событий') + '.</p>' : '');
+    var beyond = ev.filter(function (e) { return !ok(e); }).length;
+    var howto = '<div class="howto"><span><span class="wc" aria-hidden="true">WC</span>наш клуб, отсчёт от 0 минут</span>' +
+      '<span><span class="arrow" aria-hidden="true"></span>клубы конкурентов: чем правее, тем дальше идти пешком</span>' +
+      '<span><span class="swatch" aria-hidden="true"></span>до 15 минут</span><span><span class="swatch swatch--2" aria-hidden="true"></span>15–30 минут</span></div>';
+    return '<div class="ladder"><h3 style="font-size:.95rem;margin:0 0 6px">Наши клубы и пешие минуты до клубов конкурентов' + info('ladder') + '</h3>' + howto + s + '</div>' +
+      (beyond ? '<p class="note" style="margin-top:6px">Дальше часа пешком или без координат: ' + plural(beyond, 'событие', 'события', 'событий') + '. Они в списке ниже и в разделе «Все данные».</p>' : '');
   }
 
   /* ---------- 2. Акции ---------- */
