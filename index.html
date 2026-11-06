@@ -4,28 +4,51 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex, nofollow">
-  <title>Конкуренты: открытия, акции, отзывы</title>
+  <title>Конкуренты рядом с нашими клубами</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600&family=Unbounded:wght@500;600&display=swap">
   <link rel="stylesheet" href="assets/styles.css">
 </head>
 <body>
   <a class="skip" href="#main">К содержанию</a>
-  <header class="top">
-    <div>
-      <h1>Конкуренты: открытия, акции, отзывы</h1>
-      <p class="top__sub" id="topSub">Москва · Московская обл. · Санкт-Петербург · Сочи</p>
+
+  <header class="masthead">
+    <div class="masthead__row">
+      <div>
+        <h1>Конкуренты рядом с нашими клубами</h1>
+        <p class="masthead__sub" id="sub">Москва, Московская область, Санкт-Петербург, Сочи</p>
+      </div>
+      <button class="btn btn--quiet" id="themeBtn" type="button">Тема: как в системе</button>
     </div>
-    <button class="btn" id="themeBtn" type="button">Тема: система</button>
+    <nav class="jump" aria-label="Разделы страницы">
+      <a href="#threats">Угрозы</a>
+      <a href="#promos">Акции</a>
+      <a href="#chains">Конкуренты</a>
+      <a href="#season">Сезон</a>
+      <a href="#all">Все данные</a>
+    </nav>
+    <form class="filters" aria-label="Фильтры" onsubmit="return false">
+      <label for="fCity">Город</label>
+      <select id="fCity"></select>
+      <label for="fChain">Сеть</label>
+      <select id="fChain"></select>
+      <label for="fOur">Наш клуб</label>
+      <select id="fOur"></select>
+      <button class="btn btn--quiet" id="fReset" type="button">Сбросить фильтры</button>
+    </form>
   </header>
-  <p class="note" id="note"></p>
-  <nav class="tabs" aria-label="Разделы"><ul id="tabs"></ul></nav>
-  <section class="filters" aria-label="Фильтры">
-    <label>Город <select id="fCity"></select></label>
-    <label>Сеть <select id="fChain"></select></label>
-    <label>Наш клуб <select id="fOur"></select></label>
-    <button class="btn" id="fReset" type="button">Сбросить</button>
-  </section>
-  <main id="main" tabindex="-1"></main>
+
+  <main id="main" tabindex="-1">
+    <section id="threats" class="block block--hero" aria-labelledby="hThreats"></section>
+    <section id="promos" class="block" aria-labelledby="hPromos"></section>
+    <section id="chains" class="block" aria-labelledby="hChains"></section>
+    <section id="season" class="block" aria-labelledby="hSeason"></section>
+    <section id="all" class="block" aria-labelledby="hAll"></section>
+  </main>
+
   <footer class="foot" id="foot"></footer>
+  <div class="tipbox" id="tipbox" role="tooltip" hidden></div>
   <script src="assets/app.js"></script>
 </body>
 </html>
