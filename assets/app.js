@@ -69,6 +69,8 @@
     return p.length === 3 ? p[2] + '.' + p[1] + '.' + p[0] : esc(s);
   }
   function km(x) { return String(x).replace('.', ','); }
+  var WCP = 'M9.71191 1.70435V21.7961H11.0508L11.1592 21.4436L17.2539 1.70435H24.2656L24.1934 21.2942L24.1924 21.7961H25.5273L25.6387 21.4504L32.0264 1.70435H38.1689L25.8115 40.2952H19.1299L18.7188 18.1086L18.71 17.6174H17.3809L17.2725 17.969L10.3389 40.2952H3.64453V1.70435H9.71191Z';
+  var WCSVG = '<svg class="wcg" viewBox="0 0 42 42" aria-hidden="true"><path d="' + WCP + '"/></svg>';
   function chainName(id) { return D.meta.chains[id] || id; }
   /* Фирменные цвета сетей: самый частый насыщенный цвет в CSS их сайтов (сбор 06.11.2026), приблизительно. */
   var CC = { ddx: '#ff7d20', spirit: '#7827f6', xfit: '#36b647', cccp: '#c9a23f', ufc: '#d20a0a', terfit: '#cf132c', crocus: '#e31f26', encore: '#282929' };
@@ -225,7 +227,7 @@
       s += '<text class="row-sub" x="' + (L - 4) + '" y="' + (y + 13) + '" text-anchor="end">' + esc(regName(o.city)) + '</text>';
       var far = row.labels[row.labels.length - 1].cx;
       s += '<line class="ruler" x1="' + x(0) + '" x2="' + far + '" y1="' + y + '" y2="' + y + '"/>';
-      s += '<g aria-hidden="true"><rect class="our-box" x="' + (x(0) - 13) + '" y="' + (y - 9) + '" width="26" height="18" rx="4"/><text class="our-txt" x="' + x(0) + '" y="' + (y + 3.5) + '" text-anchor="middle">WC</text></g>';
+      s += '<g aria-hidden="true"><rect class="our-box" x="' + (x(0) - 13) + '" y="' + (y - 9) + '" width="26" height="18" rx="4"/><svg class="our-glyph" x="' + (x(0) - 8) + '" y="' + (y - 8) + '" width="16" height="16" viewBox="0 0 42 42"><path d="' + WCP + '"/></svg></g>';
       row.labels.slice().reverse().forEach(function (l) {
         var c = l.e.c;
         var tip = esc(KIND[l.e.k].label + ': ' + c.name + ' (' + chainName(c.chain) + ')') + '|' + esc(c.address || '') + '|' + c.nearest.walkMin + ' мин пешком, ' + km(c.nearest.walkKm != null ? c.nearest.walkKm : c.nearest.km) + ' км от нашего клуба ' + esc(o.address) + (c.openDate ? '|Открытие ' + fmtDate(c.openDate) : '');
@@ -240,7 +242,7 @@
     });
     s += '</svg>';
     var beyond = ev.filter(function (e) { return !ok(e); }).length;
-    var howto = '<div class="howto"><span><span class="wc" aria-hidden="true">WC</span>наш клуб, отсчёт от 0 минут</span>' +
+    var howto = '<div class="howto"><span><span class="wc" aria-hidden="true">' + WCSVG + '</span>наш клуб World Class, отсчёт от 0 минут</span>' +
       '<span><span class="arrow" aria-hidden="true"></span>клубы конкурентов: чем правее, тем дальше идти пешком</span>' +
       '<span><span class="swatch" aria-hidden="true"></span>до 15 минут</span><span><span class="swatch swatch--2" aria-hidden="true"></span>15–30 минут</span></div>';
     return '<div class="ladder"><h3 style="font-size:.95rem;margin:0 0 6px">Наши клубы и пешие минуты до клубов конкурентов' + info('ladder') + '</h3>' + howto + s + '</div>' +

@@ -262,3 +262,12 @@ td.r, th.r { text-align: right; font-variant-numeric: tabular-nums; white-space:
 @media (max-width: 820px) { .chain > details > summary { grid-template-columns: 1fr 18px; } .chain > details > summary .say { grid-column: 1; } }
 
 .chain__name .cb { white-space: normal; }
+
+/* знак World Class (контур с worldclass.ru) вместо букв WC */
+.brandmark svg { width: 20px; height: 20px; fill: var(--our-ink); }
+.brandmark { width: 36px; height: 36px; }
+.wc { width: 24px; height: 20px; }
+.wc .wcg { width: 12px; height: 12px; fill: var(--our-ink); }
+.ladder .our-glyph path { fill: var(--our-ink); }
+.ladder .wc .wcg { min-width: 0; width: 12px; height: 12px; }
+.ladder svg.our-glyph { min-width: 0; width: 16px; height: 16px; }
