@@ -36,7 +36,7 @@
     tg: ['Посты официальных каналов сетей за 60 дней. Модель (GPT) отбирает посты об открытиях, предпродажах и закрытиях и достаёт клуб и даты.',
       'Сети часто объявляют в Telegram раньше, чем обновляют сайт.',
       'Это сигнал, а не подтверждение. Если клуб нашёлся на сайте, его статус уже учтён выше.'],
-    changes: ['Сравниваем статусы клубов с прошлым сбором: новый клуб, смена статуса, пропал с сайта.',
+    changes: ['Сравниваем статусы клубов с прошлым сбором: новый клуб, смена статуса, пропал с сайта (засчитываем, если клуба нет два сбора подряд).',
       'Это недельная лента новостей о конкурентах.',
       'Показывает новые клубы, смену статуса и клубы, пропавшие с сайта, между двумя последними сборами.'],
     promos: ['Страницы акций на сайтах сетей и посты Telegram за 60 дней. Истёкшие по дате убраны. Акции на всю сеть отнесены ко всем её городам из нашей географии.',
@@ -55,7 +55,7 @@
       'Планировать кампании под реальные пики и спады.',
       'База сравнения в источниках разная (к прошлому месяцу или к прошлому году), смотрите формулировку. Месяц без данных помечен.'],
     sources: ['Сколько записей пришло из каждого источника при последнем сборе.',
-      'Контроль полноты: если у сети вдруг 0 клубов, скорее сломался сбор, а не закрылась сеть.',
+      'Контроль полноты: если сайт сети не ответил или число клубов резко изменилось, показываем данные прошлого сбора, дата в колонке «Данные на».',
       'Сравнивайте с прошлым сбором. Резкий провал сначала проверьте на сайте сети.']
   };
   function info(k) { return HELP[k] ? '<button type="button" class="info" data-help="' + k + '" aria-label="Как это считается">i</button>' : ''; }
@@ -158,6 +158,16 @@
   }
 
   /* ---------- ленты с фильтрами: клуб + вид, 10 строк, остальное в прокрутке ---------- */
+  function FR() { return (D.meta && D.meta.freshness) || {}; }
+  function freshNote(items) {
+    var t = items.filter(function (i) { return i[1]; }).map(function (i) { return i[0] + (i[2] || ' на ') + fmtDate(i[1]); });
+    return t.length ? ' ' + t.join(', ') + '.' : '';
+  }
+  function staleChains() {
+    var c = FR().chains || {}, g = D.meta.generatedAt;
+    var t = Object.keys(c).filter(function (k) { return c[k] && c[k] < g; }).map(function (k) { return chainName(k) + ' на ' + fmtDate(c[k]); });
+    return t.length ? ' Данные ' + t.join(', ') + '.' : '';
+  }
   function nice(s) { return String(s || '').replace(/(\d{4})-(\d{2})-(\d{2})/g, '$3.$2.$1'); }
   function trimAddr(s) { return String(s || '').replace(/[,\s]+$/, ''); }
   function chipsHTML(f, items, cur) {
@@ -339,7 +349,7 @@
     var allMine = D.clubs.filter(passClub);
     h += kpis([{ l: 'Сетей', n: cards.length, s: 'в сравнении' }, { l: 'Клубов конкурентов', n: allMine.length, s: 'в нашей географии' },
       { l: 'В 15 минутах от нашего', n: allMine.filter(function (x) { return x.nearest && x.nearest.walkMin != null && x.nearest.walkMin <= 15; }).length, s: 'пешком' }]);
-    h += '<p class="lede">Откройте строку сети: модель продаж, условия, новости и отзывы с цитатами.</p>';
+    h += '<p class="lede">Откройте строку сети: модель продаж, условия, новости и отзывы с цитатами.' + freshNote([['Карточки', FR().cards], ['отзывы', FR().reviews]]) + '</p>';
     if (!cards.length) { $('chains').innerHTML = h + empty('Карточки не собраны.'); return; }
     var byCount = function (a, b) { return b.count - a.count; };
     h += '<ul class="chains">' + cards.map(function (c) {
@@ -381,7 +391,7 @@
   function renderSeason() {
     var M = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
     var now = new Date(D.meta.generatedAt).getMonth() + 1;
-    var h = '<h2 id="hSeason">Что происходит на рынке по месяцам' + info('season') + '</h2><p class="lede">По исследованиям Национального фитнес-сообщества и разъяснениям ФНС. Текущий месяц отмечен линией сверху.</p>' + kpis([{ l: 'Месяцев с подтверждением', n: (D.season || []).filter(function (s) { return s.verified; }).length, s: 'из 12 по первоисточникам' }]);
+    var h = '<h2 id="hSeason">Что происходит на рынке по месяцам' + info('season') + '</h2><p class="lede">По исследованиям Национального фитнес-сообщества и разъяснениям ФНС. Текущий месяц отмечен линией сверху.' + freshNote([['Источники проверены', FR().season, ' ']]) + '</p>' + kpis([{ l: 'Месяцев с подтверждением', n: (D.season || []).filter(function (s) { return s.verified; }).length, s: 'из 12 по первоисточникам' }]);
     if (!D.season || !D.season.length) { $('season').innerHTML = h + empty('Календарь не собран.'); return; }
     h += '<div class="months">' + D.season.slice().sort(function (a, b) { return a.m - b.m; }).map(function (s) {
       var title = s.verified ? s.title.replace(/^[А-Яа-яё]+:\s*/, '') : 'Нет подтверждённых данных';
@@ -405,8 +415,8 @@
         var n = c.nearest;
         return '<tr><td>' + badge(c.chain) + '</td><td>' + esc(c.name) + '<br><span class="note">' + esc(c.address || '') + '</span></td><td>' + esc(ST[c.status] || c.status) + (c.openDate ? '<br><span class="note">' + fmtDate(c.openDate) + '</span>' : '') + '</td><td>' + esc(n ? n.ourAddress : '') + '</td><td class="r">' + (n && n.walkMin != null ? n.walkMin + ' мин' : '') + '</td><td class="r">' + (n ? km(n.walkKm != null ? n.walkKm : n.km) : '') + '</td><td>' + link(c.url, 'сайт') + '</td></tr>';
       }).join('') + '</tbody></table></div></details>';
-    h += '<details><summary>Что собрано и откуда <span>(сбор ' + fmtDate(D.meta.generatedAt) + ')</span></summary><p class="note" style="margin:10px 0">Полнота сбора по сетям' + info('sources') + '</p><div class="tbl"><table><thead><tr><th>Сеть</th><th class="r">Клубов у нас</th><th class="r">С координатами</th><th class="r">Акций с сайта</th><th class="r">Акций из Telegram</th></tr></thead><tbody>' +
-      D.sources.map(function (s) { return '<tr><td>' + badge(s.chain) + '</td><td class="r">' + s.clubs + '</td><td class="r">' + s.withCoords + '</td><td class="r">' + s.promosSite + '</td><td class="r">' + s.promosTelegram + '</td></tr>'; }).join('') + '</tbody></table></div>';
+    h += '<details><summary>Что собрано и откуда <span>(сбор ' + fmtDate(D.meta.generatedAt) + ')</span></summary><p class="note" style="margin:10px 0">Полнота сбора по сетям' + info('sources') + '</p><div class="tbl"><table><thead><tr><th>Сеть</th><th class="r">Клубов у нас</th><th class="r">С координатами</th><th class="r">Акций с сайта</th><th class="r">Акций из Telegram</th><th>Данные на</th></tr></thead><tbody>' +
+      D.sources.map(function (s) { return '<tr><td>' + badge(s.chain) + '</td><td class="r">' + s.clubs + '</td><td class="r">' + s.withCoords + '</td><td class="r">' + s.promosSite + '</td><td class="r">' + s.promosTelegram + '</td><td>' + (s.dataDate ? fmtDate(s.dataDate) : '') + '</td></tr>'; }).join('') + '</tbody></table></div>';
     var pl = (D.reviews && D.reviews.platforms) || [];
     h += '<p class="note" style="margin:14px 0 4px">Площадки отзывов</p><div class="tbl"><table><tbody>' + pl.map(function (p) { return '<tr><td>' + esc(p.name) + '</td><td>' + esc({ ok: 'собрано', partial: 'собрано частично', blocked: 'недоступна' }[p.status] || p.status) + '</td><td class="note">' + esc(p.note) + '</td></tr>'; }).join('') + '</tbody></table></div></details>';
     h += '<details><summary>Как считается</summary><ul class="method" style="margin-top:10px">' +
@@ -510,7 +520,7 @@
 
   fetch('data/data.json', { cache: 'no-cache' }).then(function (r) { return r.json(); }).then(function (d) {
     D = d;
-    $('sub').textContent = 'Москва, Московская область, Санкт-Петербург, Сочи. Данные на ' + fmtDate(d.meta.generatedAt) + ', у каждой записи есть ссылка на источник.';
+    $('sub').textContent = 'Москва, Московская область, Санкт-Петербург, Сочи. Данные на ' + fmtDate(d.meta.generatedAt) + ', у каждой записи есть ссылка на источник.' + staleChains();
     $('foot').innerHTML = 'Только реальные данные: сайты 8 сетей, их Telegram-каналы, Яндекс Карты и irecommend, НФС и ФНС. Файл данных: <code>data/data.json</code>. <a href="v1/">Архив версии 1</a>.';
     initFilters(); bind(); initTips(); renderAllBlocks(); jumpHighlight();
     var rz; window.addEventListener('resize', function () { clearTimeout(rz); rz = setTimeout(function () { limitFeeds(); }, 150); });
