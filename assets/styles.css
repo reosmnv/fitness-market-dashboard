@@ -271,3 +271,26 @@ td.r, th.r { text-align: right; font-variant-numeric: tabular-nums; white-space:
 .ladder .our-glyph path { fill: var(--our-ink); }
 .ladder .wc .wcg { min-width: 0; width: 12px; height: 12px; }
 .ladder svg.our-glyph { min-width: 0; width: 16px; height: 16px; }
+
+/* фильтры лент и прокрутка после 10 строк */
+.tools { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 18px; margin: 12px 0 14px; font-size: .88rem; }
+.tools label { color: var(--muted); }
+.tools select { max-width: 280px; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chipbtn { all: unset; box-sizing: border-box; cursor: pointer; display: inline-flex; align-items: center; gap: 7px; padding: 5px 12px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); font-size: .88rem; line-height: 1.3; }
+.chipbtn:hover { border-color: var(--ink-2); }
+.chipbtn:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.chipbtn[aria-pressed="true"] { background: var(--ink); color: var(--surface); border-color: var(--ink); }
+.chipbtn .cn { color: var(--muted); font-variant-numeric: tabular-nums; }
+.chipbtn[aria-pressed="true"] .cn { color: var(--surface); opacity: .75; }
+.feed { position: relative; }
+.feed--scroll { overflow-y: auto; overscroll-behavior: contain; scrollbar-gutter: stable; padding-right: 8px; }
+.feed--scroll:focus-visible { outline: 2px solid var(--focus); outline-offset: 4px; border-radius: 8px; }
+.feed-cap { margin-top: 8px; }
+
+.split > div { min-width: 0; }
+.promo-tools select { max-width: 100%; min-width: 0; }
+.tools select { max-width: min(280px, 100%); }
+
+.promo--noimg { grid-template-columns: 64px 1fr; }
+.promo__noimg { background: color-mix(in srgb, var(--c, #999) 16%, var(--surface-2)); }

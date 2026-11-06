@@ -3,7 +3,10 @@
   'use strict';
   var D = null;
   var F = { city: '', chain: '', our: '' };
-  var PF = { type: '', source: '' };
+  var PF = { type: '', source: '', our: '' };
+  var EV = { our: '', kind: '' };
+  var TGF = { our: '', kind: '' };
+  var TK = { opening: 'opened', presale: 'presale', announced: 'announced', closing: 'closed' };
   var CF = { status: '', q: '' };
   var $ = function (id) { return document.getElementById(id); };
   var KIND = {
@@ -147,31 +150,83 @@
       { k: 'opened', l: 'Открылись', n: cnt.opened, s: word(cnt.opened, 'клуб', 'клуба', 'клубов') + ' за 60 дней' }, { k: 'closed', l: 'Закрыты', n: cnt.closed, s: word(cnt.closed, 'клуб', 'клуба', 'клубов') }]);
     h += '<div class="legend" role="list">' + ['presale', 'announced', 'opened', 'closed'].map(function (k) { return '<span role="listitem">' + mark(k) + KIND[k].label + '</span>'; }).join('') + info('states') + '</div>';
     h += ladder(byOur, ev);
-    var ids = Object.keys(byOur).filter(function (id) { return byOur[id].some(function (e) { return e.w <= 30; }); })
-      .sort(function (a, b) { return byOur[a][0].w - byOur[b][0].w; });
-    h += '<h3 style="margin-top:28px">События до 30 минут пешком' + info('walk') + '</h3>';
-    if (!ids.length) h += empty('По выбранным фильтрам событий ближе 30 минут нет.');
-    else h += '<ul class="answer">' + ids.map(function (id) {
-      var o = ourById(id);
-      return '<li class="club"><div><div class="club__name">' + esc(o.address) + '</div><div class="club__city">' + esc(regName(o.city)) + '</div></div><ul class="threats">' +
-        byOur[id].filter(function (e) { return e.w <= 30; }).map(function (e) {
-          var c = e.c;
-          return '<li class="threat' + (e.w <= 15 ? ' near' : '') + '"><div class="threat__dist">' + distHTML(c.nearest) + '</div><div class="threat__what">' +
-            state(e.k) + ' ' + badge(c.chain) + ' <b>' + esc(c.name) + '</b>' + (c.openDate && e.k !== 'closed' ? ', открытие ' + fmtDate(c.openDate) : '') +
-            '<div class="meta">' + esc(c.address || '') + '. ' + esc(c.statusNote || '') + '. ' + link(c.url, 'Сайт сети') + (c.tg ? ', ' + link(c.tg, 'пост') : '') + '</div></div></li>';
-        }).join('') + '</ul></li>';
-    }).join('') + '</ul>';
-    var far = ev.filter(function (e) { return e.w > 30; }).length;
-    if (far) h += '<p class="note" style="margin-top:12px">Ещё ' + plural(far, 'событие', 'события', 'событий') + ' дальше 30 минут пешком: полный список в разделе <a href="#all">«Все данные»</a>.</p>';
-    var tg = (D.tgEvents || []).filter(function (t) { return (!F.chain || t.chain === F.chain) && (!F.city || (t.cities || []).indexOf(F.city) >= 0); });
-    h += '<h3 style="margin-top:28px">Сигналы из Telegram-каналов сетей' + info('tg') + '</h3>';
-    var tk = { opening: 'opened', presale: 'presale', announced: 'announced', closing: 'closed' };
-    h += tg.length ? '<ul class="threats" style="margin-top:10px">' + tg.map(function (t) {
-      return '<li class="threat"><div class="threat__dist"><small>' + fmtDate(t.date) + '</small></div><div class="threat__what">' + state(tk[t.kind]) + ' ' + badge(t.chain) + ' ' + esc(t.title || '') +
-        '<div class="meta">' + (t.matched ? 'Сверено с сайтом: ' + esc(t.matched) + '. ' : 'На сайте сети пока не найден. ') + link(t.post, 'Пост') + '</div></div></li>';
-    }).join('') + '</ul>' : empty('По выбранным фильтрам постов нет.');
+    h += '<h3 style="margin-top:28px">События до 30 минут пешком' + info('walk') + '</h3><div id="evBlock"></div>';
+    h += '<h3 style="margin-top:28px">Сигналы из Telegram-каналов сетей' + info('tg') + '</h3><div id="tgBlock"></div>';
     if (D.meta.hasHistory) h += '<p class="note" style="margin-top:14px">' + (D.changes.length ? 'С прошлого сбора изменилось статусов: ' + D.changes.length + '.' : 'С прошлого сбора статусы не менялись.') + info('changes') + '</p>';
     $('threats').innerHTML = h;
+    renderEvBlock(); renderTgBlock();
+  }
+
+  /* ---------- ленты с фильтрами: клуб + вид, 10 строк, остальное в прокрутке ---------- */
+  function nice(s) { return String(s || '').replace(/(\d{4})-(\d{2})-(\d{2})/g, '$3.$2.$1'); }
+  function trimAddr(s) { return String(s || '').replace(/[,\s]+$/, ''); }
+  function chipsHTML(f, items, cur) {
+    return '<div class="chips" role="group" aria-label="Вид события">' + items.map(function (i) {
+      return '<button type="button" class="chipbtn" data-f="' + f + '" data-v="' + i.v + '" aria-pressed="' + (cur === i.v) + '">' + (i.v ? mark(i.v) : '') + esc(i.l) + ' <span class="cn">' + i.n + '</span></button>';
+    }).join('') + '</div>';
+  }
+  function ourSelect(id, cur, counts) {
+    var ids = D.ours.filter(function (o) { return counts[o.id] || o.id === cur; }).sort(function (a, b) { return a.address > b.address ? 1 : -1; });
+    return '<select id="' + id + '"><option value="">все клубы</option>' + ids.map(function (o) {
+      return '<option value="' + o.id + '"' + (o.id === cur ? ' selected' : '') + '>' + esc(o.address) + ' (' + (counts[o.id] || 0) + ')</option>';
+    }).join('') + '</select>';
+  }
+  function kindChips(f, cKind, tot, cur) {
+    return chipsHTML(f, [{ v: '', l: 'Все', n: tot }].concat(['presale', 'announced', 'opened', 'closed'].map(function (k) { return { v: k, l: KIND[k].label, n: cKind[k] || 0 }; })), cur);
+  }
+  function evCard(e) {
+    var c = e.c, o = ourById(c.nearest.our);
+    return '<li class="club"><div><div class="club__name">' + esc(o.address) + '</div><div class="club__city">' + esc(regName(o.city)) + '</div></div><ul class="threats"><li class="threat' + (e.w <= 15 ? ' near' : '') + '"><div class="threat__dist">' + distHTML(c.nearest) + '</div><div class="threat__what">' +
+      state(e.k) + ' ' + badge(c.chain) + ' <b>' + esc(c.name) + '</b>' + (c.openDate && e.k !== 'closed' ? ', открытие ' + fmtDate(c.openDate) : '') +
+      '<div class="meta">' + esc(trimAddr(c.address)) + '. ' + esc(nice(c.statusNote)) + '. ' + link(c.url, 'Сайт сети') + (c.tg ? ', ' + link(c.tg, 'пост') : '') + '</div></div></li></ul></li>';
+  }
+  function renderEvBlock() {
+    var box = $('evBlock'); if (!box) return;
+    var all = events().filter(function (e) { return e.w <= 30 && e.c.nearest; });
+    var okOur = function (e) { return !EV.our || e.c.nearest.our === EV.our; }, okKind = function (e) { return !EV.kind || e.k === EV.kind; };
+    var cOur = {}; all.filter(okKind).forEach(function (e) { cOur[e.c.nearest.our] = (cOur[e.c.nearest.our] || 0) + 1; });
+    var cKind = {}, byOurList = all.filter(okOur); byOurList.forEach(function (e) { cKind[e.k] = (cKind[e.k] || 0) + 1; });
+    var list = byOurList.filter(okKind);
+    var h = '<div class="tools"><label for="eOur">Наш клуб</label>' + ourSelect('eOur', EV.our, cOur) + kindChips('ev', cKind, byOurList.length, EV.kind) + '<span class="muted small">В списке: ' + list.length + '</span></div>';
+    h += list.length ? '<ul class="answer feed" data-limit="10" aria-label="Список событий">' + list.map(evCard).join('') + '</ul>' : empty('По выбранным фильтрам событий нет.');
+    var far = events().filter(function (e) { return e.w > 30; }).length;
+    if (far) h += '<p class="note" style="margin-top:12px">Ещё ' + plural(far, 'событие', 'события', 'событий') + ' дальше 30 минут пешком: полный список в разделе <a href="#all">«Все данные»</a>.</p>';
+    box.innerHTML = h; limitFeeds(box);
+  }
+  function tgOur(t) {
+    if (!t.matched) return null;
+    for (var i = 0; i < D.clubs.length; i++) { var x = D.clubs[i]; if (x.chain === t.chain && x.name === t.matched) return x; }
+    return null;
+  }
+  function renderTgBlock() {
+    var box = $('tgBlock'); if (!box) return;
+    var all = (D.tgEvents || []).filter(function (t) { return (!F.chain || t.chain === F.chain) && (!F.city || (t.cities || []).indexOf(F.city) >= 0); })
+      .map(function (t) { var c = tgOur(t); return { t: t, k: TK[t.kind], c: c, our: c && c.nearest ? c.nearest.our : null }; });
+    var okOur = function (x) { return !TGF.our || x.our === TGF.our; }, okKind = function (x) { return !TGF.kind || x.k === TGF.kind; };
+    var cOur = {}; all.filter(okKind).forEach(function (x) { if (x.our) cOur[x.our] = (cOur[x.our] || 0) + 1; });
+    var cKind = {}, byOurList = all.filter(okOur); byOurList.forEach(function (x) { cKind[x.k] = (cKind[x.k] || 0) + 1; });
+    var list = byOurList.filter(okKind);
+    var h = '<div class="tools"><label for="tOur">Наш клуб</label>' + ourSelect('tOur', TGF.our, cOur) + kindChips('tg', cKind, byOurList.length, TGF.kind) + '<span class="muted small">В списке: ' + list.length + '</span></div>';
+    h += list.length ? '<ul class="threats feed" data-limit="10" aria-label="Список постов">' + list.map(function (x) {
+      var t = x.t, n = x.c && x.c.nearest;
+      return '<li class="threat"><div class="threat__dist"><small>' + fmtDate(t.date) + '</small></div><div class="threat__what">' + state(x.k) + ' ' + badge(t.chain) + ' ' + esc(t.title || '') +
+        '<div class="meta">' + (x.c ? 'Сверено с сайтом: ' + esc(t.matched) + (n ? '. Ближайший наш клуб: ' + esc(n.ourAddress) + (n.walkMin != null ? ', ' + n.walkMin + ' мин пешком' : '') : '') + '. ' : 'На сайте сети пока не найден. ') + link(t.post, 'Пост') + '</div></div></li>';
+    }).join('') + '</ul>' : empty('По выбранным фильтрам постов нет.');
+    box.innerHTML = h; limitFeeds(box);
+  }
+  /* показываем 10 строк, остальные доступны прокруткой внутри списка */
+  function limitFeeds(root) {
+    (root || document).querySelectorAll('.feed[data-limit]').forEach(function (f) {
+      var n = +f.getAttribute('data-limit');
+      f.style.maxHeight = ''; f.classList.remove('feed--scroll'); f.removeAttribute('tabindex');
+      var cap = f.nextElementSibling; if (cap && cap.classList.contains('feed-cap')) cap.remove();
+      var it = f.children; if (it.length <= n) return;
+      f.classList.add('feed--scroll'); f.setAttribute('tabindex', '0');
+      var gap = parseFloat(getComputedStyle(f).rowGap) || 0;
+      var bw = f.offsetHeight - f.clientHeight;
+      f.style.maxHeight = (it[n].offsetTop - it[0].offsetTop - gap + bw) + 'px';
+      f.insertAdjacentHTML('afterend', '<p class="feed-cap note">Показано ' + n + ' из ' + it.length + '. Остальные ниже: прокрутите список.</p>');
+    });
   }
 
   function ladder(byOur, ev) {
@@ -255,7 +310,8 @@
     var byType = {}; base.forEach(function (p) { byType[p.type] = (byType[p.type] || 0) + 1; });
     var types = Object.keys(byType).sort(function (a, b) { return byType[b] - byType[a] || (a > b ? 1 : -1); });
     var max = Math.max.apply(null, types.map(function (t) { return byType[t]; }).concat([1]));
-    var list = base.filter(function (p) { return (!PF.type || p.type === PF.type) && (!PF.source || p.source === PF.source); });
+    var ourCity = PF.our ? (ourById(PF.our) || {}).city : '';
+    var list = base.filter(function (p) { return (!PF.type || p.type === PF.type) && (!PF.source || p.source === PF.source) && (!ourCity || p.cities.indexOf(ourCity) >= 0); });
     var chains = {}; base.forEach(function (p) { chains[p.chain] = 1; });
     var h = '<h2 id="hPromos">Акции конкурентов' + info('promos') + '</h2>';
     h += kpis([{ l: 'Действующих акций', n: base.length, s: 'с сайтов и Telegram' }, { l: 'Сетей с акциями', n: Object.keys(chains).length, s: 'из 8 в нашей географии' },
@@ -263,17 +319,17 @@
     h += '<div class="split"><div><h3 style="margin-bottom:10px;font-size:.92rem">Механики' + info('ptype') + '</h3><ul class="bars">' + types.map(function (t) {
       return '<li><button type="button" data-type="' + esc(t) + '" aria-pressed="' + (PF.type === t) + '"><span>' + esc(t) + '</span><span class="track"><span class="fill" style="width:' + (100 * byType[t] / max) + '%"></span></span><span class="n">' + byType[t] + '</span></button></li>';
     }).join('') + '</ul>' + (PF.type ? '<p style="margin-top:10px"><button type="button" class="linkbtn" id="pAll">Показать все механики</button></p>' : '') + '</div><div>';
-    h += '<div class="promo-tools"><label for="pSrc">Источник</label><select id="pSrc"><option value="">сайт и Telegram</option><option value="site"' + (PF.source === 'site' ? ' selected' : '') + '>только сайт</option><option value="telegram"' + (PF.source === 'telegram' ? ' selected' : '') + '>только Telegram</option></select><span>В списке: ' + list.length + '</span></div>';
-    h += list.length ? '<ul class="promos">' + list.map(function (p, i) {
+    h += '<div class="promo-tools"><label for="pOur">Наш клуб</label><select id="pOur"><option value="">все клубы</option>' + D.ours.slice().sort(function (a, b) { return a.address > b.address ? 1 : -1; }).map(function (o) { return '<option value="' + o.id + '"' + (PF.our === o.id ? ' selected' : '') + '>' + esc(o.address) + ' (' + esc(regName(o.city)) + ')</option>'; }).join('') + '</select><label for="pSrc">Источник</label><select id="pSrc"><option value="">сайт и Telegram</option><option value="site"' + (PF.source === 'site' ? ' selected' : '') + '>только сайт</option><option value="telegram"' + (PF.source === 'telegram' ? ' selected' : '') + '>только Telegram</option></select><span>В списке: ' + list.length + '</span></div>';
+    h += list.length ? '<ul class="promos feed" data-limit="10" aria-label="Список акций">' + list.map(function (p, i) {
       var long = (p.mechanic || '').length > 220;
-      return '<li class="promo' + (p.image ? '' : ' promo--noimg') + '" id="pr' + i + '" style="' + cvar(p.chain) + '">' + (p.image ? '<img class="promo__img" loading="lazy" referrerpolicy="no-referrer" src="' + esc(p.image) + '" alt="" onerror="this.parentNode.classList.add(\'promo--noimg\');this.remove()">' : '') +
+      return '<li class="promo" id="pr' + i + '" style="' + cvar(p.chain) + '">' + (p.image ? '<img class="promo__img" loading="lazy" referrerpolicy="no-referrer" src="' + esc(p.image) + '" alt="" onerror="this.outerHTML=\'<span class=&quot;promo__noimg&quot; aria-hidden=&quot;true&quot;></span>\'">' : '<span class="promo__noimg" aria-hidden="true"></span>') +
         '<div><div class="promo__head">' + badge(p.chain) + '<span class="promo__title">' + esc(p.title) + '</span><span class="chip">' + esc(p.type) + '</span></div>' +
         '<div class="promo__meta">' + (p.validTo ? 'До ' + fmtDate(p.validTo) : 'Срок не указан') + '. ' + esc(p.cities.map(regName).join(', ')) + (p.club ? ', клуб ' + esc(p.club) : '') + '. ' +
         link(p.url, p.source === 'telegram' ? 'Пост в Telegram' + (p.postDate ? ' от ' + fmtDate(p.postDate) : '') : 'Страница акции') + '</div>' +
         (p.mechanic ? '<p class="promo__text">' + esc(p.mechanic) + '</p>' + (long ? '<button type="button" class="linkbtn" data-more="pr' + i + '">Показать полностью</button>' : '') : '<p class="promo__text">Условия только на баннере, текста на странице нет.</p>') + '</div></li>';
     }).join('') + '</ul>' : empty('По выбранным фильтрам акций нет.');
     h += '</div></div>';
-    $('promos').innerHTML = h;
+    $('promos').innerHTML = h; limitFeeds($('promos'));
   }
 
   /* ---------- 3. Конкуренты ---------- */
@@ -325,7 +381,7 @@
   function renderSeason() {
     var M = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
     var now = new Date(D.meta.generatedAt).getMonth() + 1;
-    var h = '<h2 id="hSeason">Сезон: что происходит на рынке по месяцам' + info('season') + '</h2><p class="lede">По исследованиям Национального фитнес-сообщества и разъяснениям ФНС. Текущий месяц отмечен линией сверху.</p>' + kpis([{ l: 'Месяцев с подтверждением', n: (D.season || []).filter(function (s) { return s.verified; }).length, s: 'из 12 по первоисточникам' }]);
+    var h = '<h2 id="hSeason">Что происходит на рынке по месяцам' + info('season') + '</h2><p class="lede">По исследованиям Национального фитнес-сообщества и разъяснениям ФНС. Текущий месяц отмечен линией сверху.</p>' + kpis([{ l: 'Месяцев с подтверждением', n: (D.season || []).filter(function (s) { return s.verified; }).length, s: 'из 12 по первоисточникам' }]);
     if (!D.season || !D.season.length) { $('season').innerHTML = h + empty('Календарь не собран.'); return; }
     h += '<div class="months">' + D.season.slice().sort(function (a, b) { return a.m - b.m; }).map(function (s) {
       var title = s.verified ? s.title.replace(/^[А-Яа-яё]+:\s*/, '') : 'Нет подтверждённых данных';
@@ -382,8 +438,15 @@
     $('fCity').onchange = function (e) { F.city = e.target.value; renderAllBlocks(); };
     $('fChain').onchange = function (e) { F.chain = e.target.value; renderAllBlocks(); };
     $('fOur').onchange = function (e) { F.our = e.target.value; renderAllBlocks(); };
-    $('fReset').onclick = function () { F = { city: '', chain: '', our: '' }; PF = { type: '', source: '' }; CF = { status: '', q: '' }; history.replaceState(null, '', location.pathname); initFilters(); renderAllBlocks(); };
+    $('fReset').onclick = function () { F = { city: '', chain: '', our: '' }; PF = { type: '', source: '', our: '' }; EV = { our: '', kind: '' }; TGF = { our: '', kind: '' }; CF = { status: '', q: '' }; history.replaceState(null, '', location.pathname); initFilters(); renderAllBlocks(); };
     document.addEventListener('click', function (e) {
+      var ch = e.target.closest ? e.target.closest('[data-f]') : null;
+      if (ch) {
+        var f = ch.getAttribute('data-f'), v = ch.getAttribute('data-v');
+        if (f === 'ev') { EV.kind = EV.kind === v ? '' : v; renderEvBlock(); } else { TGF.kind = TGF.kind === v ? '' : v; renderTgBlock(); }
+        var nb = document.querySelector('[data-f="' + f + '"][data-v="' + v + '"]'); if (nb) nb.focus();
+        return;
+      }
       var t = e.target.closest ? e.target.closest('[data-type],#pAll,[data-more]') : null;
       if (!t) return;
       if (t.id === 'pAll') { PF.type = ''; renderPromos(); return; }
@@ -393,6 +456,9 @@
       var b = document.querySelector('[data-type="' + ty + '"]'); if (b) b.focus();
     });
     document.addEventListener('change', function (e) {
+      if (e.target.id === 'eOur') { EV.our = e.target.value; renderEvBlock(); $('eOur').focus(); }
+      if (e.target.id === 'tOur') { TGF.our = e.target.value; renderTgBlock(); $('tOur').focus(); }
+      if (e.target.id === 'pOur') { PF.our = e.target.value; renderPromos(); $('pOur').focus(); }
       if (e.target.id === 'pSrc') { PF.source = e.target.value; renderPromos(); $('pSrc').focus(); }
       if (e.target.id === 'cSt') { CF.status = e.target.value; renderAll(); $('cSt').focus(); }
     });
@@ -447,6 +513,8 @@
     $('sub').textContent = 'Москва, Московская область, Санкт-Петербург, Сочи. Данные на ' + fmtDate(d.meta.generatedAt) + ', у каждой записи есть ссылка на источник.';
     $('foot').innerHTML = 'Только реальные данные: сайты 8 сетей, их Telegram-каналы, Яндекс Карты и irecommend, НФС и ФНС. Файл данных: <code>data/data.json</code>. <a href="v1/">Архив версии 1</a>.';
     initFilters(); bind(); initTips(); renderAllBlocks(); jumpHighlight();
+    var rz; window.addEventListener('resize', function () { clearTimeout(rz); rz = setTimeout(function () { limitFeeds(); }, 150); });
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { limitFeeds(); });
     if (location.hash) { var t = document.querySelector(location.hash); if (t) t.scrollIntoView(); }
   }).catch(function (e) { $('threats').innerHTML = empty('Не удалось загрузить data/data.json: ' + esc(e.message) + '. Обновите страницу.'); });
 })();
