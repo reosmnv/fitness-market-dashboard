@@ -234,3 +234,4 @@ td.r, th.r { text-align: right; font-variant-numeric: tabular-nums; white-space:
 .ladder .dlabel .m { font-weight: 600; }
 .ladder .rowsep { stroke: var(--line); stroke-width: 1; }
 #themeBtn { white-space: nowrap; flex: none; }
+@media (max-width: 520px) { .masthead__row { flex-wrap: wrap; } #themeBtn { font-size: .85rem; } }
