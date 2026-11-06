@@ -20,20 +20,6 @@
   --font-body: "Golos Text", Arial, Helvetica, sans-serif;
   --font-display: "Golos Text", Arial, Helvetica, sans-serif;
 }
-@media (prefers-color-scheme: dark) {
-  :root:where(:not([data-theme="light"])) {
-    color-scheme: dark;
-    --bg: #121212; --surface: #1c1c1c; --surface-2: #2a2a2a; --ink: #f5f5f5; --ink-2: #d0d0d0; --muted: #8e8e8e; --line: #2f2f2f;
-    --brand: #e9212c; --brand-ink: #f04444; --focus: #f04444; --zone: #2b1516; --zone-2: #232323; --our: #f5f5f5; --our-ink: #121212;
-    --s-announced: #3987e5; --s-presale: #d95926; --s-opened: #199e70; --s-closed: #767676;
-  }
-}
-:root[data-theme="dark"] {
-  color-scheme: dark;
-  --bg: #121212; --surface: #1c1c1c; --surface-2: #2a2a2a; --ink: #f5f5f5; --ink-2: #d0d0d0; --muted: #8e8e8e; --line: #2f2f2f;
-  --brand: #e9212c; --brand-ink: #f04444; --focus: #f04444; --zone: #2b1516; --zone-2: #232323; --our: #f5f5f5; --our-ink: #121212;
-  --s-announced: #3987e5; --s-presale: #d95926; --s-opened: #199e70; --s-closed: #767676;
-}
 
 * { box-sizing: border-box; }
 html { font-size: 16px; scroll-behavior: smooth; scroll-padding-top: 150px; }
@@ -233,5 +219,46 @@ td.r, th.r { text-align: right; font-variant-numeric: tabular-nums; white-space:
 .ladder .dlabel { fill: var(--ink); font-size: 11.5px; }
 .ladder .dlabel .m { font-weight: 600; }
 .ladder .rowsep { stroke: var(--line); stroke-width: 1; }
-#themeBtn { white-space: nowrap; flex: none; }
-@media (max-width: 520px) { .masthead__row { flex-wrap: wrap; } #themeBtn { font-size: .85rem; } }
+
+/* цвета сетей-конкурентов: только в блоках про одну сеть; название всегда текстом на плашке */
+.cb { display: inline-block; padding: 1px 8px; border-radius: 999px; background: var(--c); color: var(--ct); font-weight: 600; font-size: .8rem; line-height: 1.45; white-space: nowrap; vertical-align: 1px; }
+.promo { border-left: 3px solid var(--c, transparent); padding-left: 12px; }
+.threat__what .cb { margin: 0 2px; }
+.chain { box-shadow: inset 4px 0 0 var(--c); }
+.chain > details > summary { padding-left: 16px; background: color-mix(in srgb, var(--c) 6%, var(--bg)); }
+.chain > details[open] > summary { background: color-mix(in srgb, var(--c) 10%, var(--bg)); }
+.chain__body { padding-left: 16px; padding-right: 8px; }
+.chain__name .cb { font-size: .92rem; padding: 2px 10px; }
+
+/* единая полоса «живых» цифр */
+:root { --good: #0b7a2d; --good-bg: #e8f4ec; --bad: #b02a2a; --bad-bg: #fbeaea; }
+.hl { color: var(--brand); font-weight: 700; }
+.kpis { display: flex; flex-wrap: wrap; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; margin: 16px 0 20px; overflow: hidden; }
+.kpi { padding: 12px 22px 12px 16px; border-right: 1px solid var(--line); flex: 1 1 150px; min-width: 140px; }
+.kpi:last-child { border-right: 0; }
+.kpi__l { display: flex; align-items: center; gap: 7px; font-size: .86rem; color: var(--ink-2); }
+.kpi__n { font-weight: 700; font-size: 2.2rem; line-height: 1.1; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; margin-top: 2px; }
+.kpi__s { font-size: .82rem; color: var(--muted); }
+.kpi--live { flex: 2 1 200px; display: flex; align-items: center; gap: 10px; background: var(--zone-2); color: var(--muted); font-size: .8rem; line-height: 1.35; }
+.ico { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.ico--down { transform: rotate(180deg); }
+.kpi--live .ico { width: 20px; height: 20px; }
+
+/* блоки «хвалят / ругают»: ответ главное, подпись вторична */
+.chain > details > summary { grid-template-columns: 205px 190px 1fr 1fr 18px; align-items: stretch; }
+.chain__col .big { font-weight: 700; font-size: 1.5rem; letter-spacing: -0.02em; margin-right: 2px; }
+.say { border-radius: 10px; padding: 9px 12px; border-left: 4px solid var(--sc); background: var(--sb); }
+.say--good { --sc: var(--good); --sb: var(--good-bg); --st: var(--good); }
+.say--bad { --sc: var(--bad); --sb: var(--bad-bg); --st: var(--bad); }
+.say__h { display: flex; align-items: center; gap: 6px; font-size: .84rem; font-weight: 600; color: var(--st); }
+.say__t { font-size: 1.1rem; font-weight: 600; line-height: 1.3; margin-top: 3px; color: var(--ink); }
+.say__t--none { font-weight: 400; color: var(--muted); font-size: .95rem; }
+.say__c { font-size: .8rem; color: var(--ink-2); margin-top: 2px; }
+.rv { display: flex; align-items: center; gap: 8px; font-size: 1rem; margin: 14px 0 8px; padding: 6px 10px; border-radius: 8px; background: var(--sb); color: var(--st); }
+.rv--good { --sb: var(--good-bg); --st: var(--good); }
+.rv--bad { --sb: var(--bad-bg); --st: var(--bad); }
+.rev li b { font-size: .98rem; }
+.kv dd { color: var(--ink); }
+@media (max-width: 820px) { .chain > details > summary { grid-template-columns: 1fr 18px; } .chain > details > summary .say { grid-column: 1; } }
+
+.chain__name .cb { white-space: normal; }
